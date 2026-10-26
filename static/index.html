@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediVision AI - Göğüs Radyolojisi Klinik Karar Destek Sistemi</title>
+    <meta name="description" content="YOLO Segmentasyon ve Görme-Dil Modeli (VLM) ile Yapay Zeka Destekli Göğüs Radyolojisi Raporlama ve Klinik Karar Destek Sistemi">
+    
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Arka Plan Efektleri -->
+    <div class="bg-mesh" aria-hidden="true"></div>
+    <div class="bg-grid-pattern" aria-hidden="true"></div>
+
+    <!-- Üst Menü / Navbar -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="brand-logo">
+                <div class="logo-icon-wrapper">
+                    <i data-lucide="scan-heart" class="logo-icon"></i>
+                    <span class="pulse-ring"></span>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-title">
+                        <span class="gradient-text">MediVision</span>
+                        <span class="badge-cdss">CDSS AI</span>
+                    </div>
+                    <span class="brand-subtitle">Göğüs Radyolojisi & VLM Klinik Karar Destek Sistemi</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-center">
+            <div class="system-status-pill" id="systemStatusPill">
+                <span class="status-dot pulsing"></span>
+                <span class="status-label" id="statusLabel">YOLO & Transformer VLM Hazır (CUDA)</span>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <button class="header-btn" id="btnQuickGuide" title="Sistem ve Model Bilgisi">
+                <i data-lucide="book-open"></i>
+                <span>Tez & Model Bilgisi</span>
+            </button>
+            <button class="header-btn" id="btnThemeToggle" title="Karanlık / Aydınlık Mod">
+                <i data-lucide="sun" id="themeIcon"></i>
+            </button>
+            <div class="doctor-badge">
+                <div class="doc-avatar">Dr</div>
+                <div class="doc-info">
+                    <span class="doc-name">Radyoloji Paneli</span>
+                    <span class="doc-role">Karar Destek Aktif</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Ana Çalışma Alanı Grid -->
+    <main class="main-container">
+        
+        <!-- ================= SOL KOLON: GÖRÜNTÜ GİRİŞİ & SEGMENTASYON ================= -->
+        <section class="panel panel-left" aria-labelledby="heading-image-analysis">
+            
+            <!-- Giriş Seçim Sekmeleri -->
+            <div class="panel-header-tabs">
+                <button class="tab-btn active" id="tabFeatured" data-target="featuredView">
+                    <i data-lucide="sparkles"></i>
+                    <span>Örnek Olgular (Test)</span>
+                </button>
+                <button class="tab-btn" id="tabUpload" data-target="uploadView">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Yeni Röntgen Yükle</span>
+                </button>
+                <button class="tab-btn" id="tabDataset" data-target="datasetView">
+                    <i data-lucide="database"></i>
+                    <span>Tüm Test Seti (2.354)</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: Öne Çıkan Test Vakaları -->
+            <div class="tab-content active" id="featuredView">
+                <div class="featured-card-intro">
+                    <p>Bitirme veri setinden özel olarak etiketlenmiş farklı patolojilere sahip örnek test röntgenleri:</p>
+                </div>
+                <div class="featured-grid" id="featuredGrid">
+                    <!-- Javascript ile doldurulacak -->
+                </div>
+            </div>
+
+            <!-- TAB 2: Manuel Görüntü Yükleme -->
+            <div class="tab-content" id="uploadView">
+                <div class="upload-dropzone" id="dropzone">
+                    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg" hidden>
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon-circle">
+                            <i data-lucide="file-up"></i>
+                        </div>
+                        <h3>Göğüs Röntgenini Sürükleyip Bırakın</h3>
+                        <p>veya bilgisayarınızdan seçmek için tıklayın (.JPG, .PNG)</p>
+                        <button class="btn btn-primary btn-sm" id="btnBrowseFile" type="button">
+                            <i data-lucide="folder-search"></i> Dosya Seç
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Tüm 2354 Test Veri Gezgini -->
+            <div class="tab-content" id="datasetView">
+                <div class="dataset-search-bar">
+                    <div class="search-input-wrapper">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="datasetSearchInput" placeholder="Vaka ID ile ara (örn: 001c3589...)" autocomplete="off">
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="btnRandomSample" title="Rastgele Bir Test Görüntüsü Getir">
+                        <i data-lucide="shuffle"></i> Rastgele Seç
+                    </button>
+                </div>
+                <div class="dataset-list-wrapper">
+                    <ul class="dataset-list" id="datasetList">
+                        <!-- JS ile doldurulacak -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- GÖRÜNTÜ GÖRSELLEŞTİRİCİ VE SEGMENTASYON ALANI -->
+            <div class="viewer-section">
+                <div class="viewer-header">
+                    <div class="viewer-title-group">
+                        <h2 id="heading-image-analysis">
+                            <i data-lucide="eye"></i>
+                            Görüntü ve Bölütleme (Segmentasyon)
+                        </h2>
+                        <span class="active-case-tag" id="activeCaseTag">Seçili Vaka: Hazır</span>
+                    </div>
+
+                    <!-- Görüntüleme Modu Butonları -->
+                    <div class="view-mode-toggle" id="viewModeToggle">
+                        <button class="mode-btn active" data-mode="split" title="İnteraktif Kaydırmalı Karşılaştırma">
+                            <i data-lucide="columns-2"></i>
+                            <span>Bölünmüş Slider</span>
+                        </button>
+                        <button class="mode-btn" data-mode="overlay" title="Renkli Maske Bindirmesi">
+                            <i data-lucide="layers"></i>
+                            <span>Maske Overlay</span>
+                        </button>
+                        <button class="mode-btn" data-mode="cleaned" title="YOLO Tarafından Arka Planı Temizlenmiş Görüntü (VLM Girdisi)">
+                            <i data-lucide="scissors"></i>
+                            <span>Temizlenmiş Doku</span>
+                        </button>
+                        <button class="mode-btn" data-mode="raw" title="Orijinal Ham Röntgen">
+                            <i data-lucide="image"></i>
+                            <span>Ham Röntgen</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- İnteraktif Görüntü Tuvali / Canvas Wrapper -->
+                <div class="image-stage" id="imageStage">
+                    
+                    <!-- Yükleme / Analiz Durumu Göstergesi -->
+                    <div class="stage-overlay-loading" id="stageLoading" style="display: none;">
+                        <div class="medical-spinner"></div>
+                        <h4 id="loadingStageTitle">YOLO & VLM İnference Çalışıyor...</h4>
+                        <p id="loadingStageDesc">Arka plan temizliği yapılıyor ve LSTM raporu oluşturuluyor</p>
+                        <div class="stage-progress-bar"><div class="progress-fill"></div></div>
+                    </div>
+
+                    <!-- Karşılaştırmalı Bölünmüş Slider Görünümü -->
+                    <div class="split-slider-container" id="splitSliderContainer">
+                        <img src="" alt="Orijinal Röntgen" class="split-img split-before" id="splitImgBefore">
+                        <div class="split-after-wrapper" id="splitAfterWrapper">
+                            <img src="" alt="Segmentasyon Maskeli Röntgen" class="split-img split-after" id="splitImgAfter">
+                        </div>
+                        <div class="slider-handle" id="sliderHandle">
+                            <div class="handle-line"></div>
+                            <div class="handle-button">
+                                <i data-lucide="chevrons-left-right"></i>
+                            </div>
+                        </div>
+                        <span class="slider-label label-left">Orijinal</span>
+                        <span class="slider-label label-right">YOLO Bölütleme</span>
+                    </div>
+
+                    <!-- Tekli Görünüm Modu (Overlay / Cleaned / Raw) -->
+                    <div class="single-img-container" id="singleImgContainer" style="display: none;">
+                        <img src="" alt="Görüntü" class="single-stage-img" id="singleStageImg">
+                    </div>
+
+                    <!-- Boş Durum (Placeholder) -->
+                    <div class="stage-placeholder" id="stagePlaceholder">
+                        <div class="placeholder-icon">
+                            <i data-lucide="file-scan"></i>
+                        </div>
+                        <h3>İncelenecek Bir Röntgen Seçin veya Yükleyin</h3>
+                        <p>Yukarıdaki sekmelerden bir test olgusu seçerek veya dosya yükleyerek YOLO segmentasyonunu ve VLM raporunu çalıştırın.</p>
+                    </div>
+                </div>
+
+                <!-- Görüntü Kontrolleri & Opaklık Ayarı -->
+                <div class="viewer-controls-bar">
+                    <div class="opacity-control" id="opacityControlGroup">
+                        <label for="maskOpacitySlider">
+                            <i data-lucide="sliders-horizontal"></i>
+                            <span>Maske Opaklığı:</span>
+                        </label>
+                        <input type="range" id="maskOpacitySlider" min="10" max="100" value="85">
+                        <span class="range-val" id="maskOpacityVal">%85</span>
+                    </div>
+
+                    <div class="viewer-toggles">
+                        <button class="tool-btn" id="btnToggleContour" title="Neon Lezyon Kontur Çizgisini Aç/Kapat">
+                            <i data-lucide="pentagon"></i>
+                            <span>Kontur: Açık</span>
+                        </button>
+                        <button class="tool-btn" id="btnResetZoom" title="Görüntüyü Sıfırla">
+                            <i data-lucide="rotate-ccw"></i>
+                            <span>Sıfırla</span>
+                        </button>
+                        <button class="tool-btn" id="btnFullscreen" title="Tam Ekran İncele">
+                            <i data-lucide="maximize-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- YOLO Segmentasyon Metrik Kartları -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="target"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Tespit Edilen Doku/Lezyon</span>
+                            <span class="metric-value" id="valDetectionCount">-</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="shield-check"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">YOLO Güven Skoru</span>
+                            <span class="metric-value" id="valYoloConf">-</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="pie-chart"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Akciğer / Görüntü Oranı</span>
+                            <span class="metric-value" id="valAreaRatio">-</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="clock"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Bölütleme Süresi</span>
+                            <span class="metric-value" id="valYoloTime">-</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ================= SAĞ KOLON: KLİNİK KARAR DESTEK & VLM RAPORU ================= -->
+        <section class="panel panel-right" aria-labelledby="heading-cdss-report">
+            
+            <!-- CDSS Triyaj ve Risk Başlığı -->
+            <div class="cdss-triage-card" id="cdssTriageCard">
+                <div class="triage-status-wrapper">
+                    <div class="triage-icon-wrap" id="triageIconWrap">
+                        <i data-lucide="activity"></i>
+                    </div>
+                    <div class="triage-info">
+                        <div class="triage-top">
+                            <span class="triage-badge" id="triageBadge">Sistem Beklemede</span>
+                            <span class="triage-model-source">DenseNet-121 + Transformer (20 Epoch)</span>
+                        </div>
+                        <h3 class="triage-summary" id="triageSummary">Röntgen analizi bekleniyor...</h3>
+                    </div>
+                </div>
+
+                <!-- Otomatik Çıkarılan Klinik Etiketler -->
+                <div class="clinical-tags-container" id="clinicalTagsContainer">
+                    <!-- JS ile #Pnömotoraks, #Kardiyomegali vb. etiketler buraya gelecek -->
+                </div>
+            </div>
+
+            <!-- RAPOR VE KARAR DESTEK SEKME GRUBU -->
+            <div class="report-tabs-nav">
+                <button class="rtab-btn active" data-tab="vlmReportTab">
+                    <i data-lucide="file-text"></i>
+                    <span>Üretilen Doktor Raporu</span>
+                </button>
+                <button class="rtab-btn" data-tab="groundTruthTab" id="tabGroundTruthBtn">
+                    <i data-lucide="git-compare"></i>
+                    <span>Akademik Karşılaştırma & BLEU</span>
+                    <span class="badge-mini" id="badgeGtAvailable" style="display: none;">Mevcut</span>
+                </button>
+                <button class="rtab-btn" data-tab="doctorEditTab">
+                    <i data-lucide="stethoscope"></i>
+                    <span>Doktor Onay & Düzenleme</span>
+                </button>
+            </div>
+
+            <!-- SEKME 1: VLM DOKTOR RAPORU -->
+            <div class="report-tab-pane active" id="vlmReportTab">
+                <div class="report-box-card">
+                    <div class="report-box-header">
+                        <div class="rb-title-group">
+                            <i data-lucide="clipboard-plus"></i>
+                            <span>Yapay Zeka Tarafından Üretilen Radyoloji Raporu</span>
+                        </div>
+                        <div class="rb-actions">
+                            <button class="icon-btn" id="btnCopyReport" title="Metni Panoya Kopyala">
+                                <i data-lucide="copy"></i>
+                            </button>
+                            <button class="btn btn-outline btn-xs" id="btnTransferToEditor" title="Düzenleme Moduna Aktar">
+                                <i data-lucide="file-edit"></i> Düzenle
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Yapılandırılmış Rapor Bölümleri -->
+                    <div class="structured-report-body" id="structuredReportBody">
+                        
+                        <div class="report-section-block">
+                            <div class="section-label">
+                                <i data-lucide="microscope"></i> TETKİK (EXAMINATION)
+                            </div>
+                            <div class="section-content" id="reportSecExam">-</div>
+                        </div>
+
+                        <div class="report-section-block">
+                            <div class="section-label">
+                                <i data-lucide="info"></i> KLİNİK ENDİKASYON (INDICATION)
+                            </div>
+                            <div class="section-content" id="reportSecInd">-</div>
+                        </div>
+
+                        <div class="report-section-block highlight-block">
+                            <div class="section-label">
+                                <i data-lucide="scan"></i> RADYOLOJİK BULGULAR (FINDINGS)
+                            </div>
+                            <div class="section-content" id="reportSecFind">-</div>
+                        </div>
+
+                        <div class="report-section-block impression-block">
+                            <div class="section-label">
+                                <i data-lucide="check-circle-2"></i> SONUÇ VE İZLENİM (IMPRESSION)
+                            </div>
+                            <div class="section-content text-bold" id="reportSecImp">-</div>
+                        </div>
+
+                    </div>
+
+                    <!-- Ham LSTM Çıktı Akordiyonu -->
+                    <details class="raw-tokens-accordion">
+                        <summary>
+                            <i data-lucide="code-2"></i> Model Ham Kelime Çıktısı (Transformer Autoregressive Sequence)
+                        </summary>
+                        <div class="raw-token-box" id="rawTokenBox">-</div>
+                    </details>
+                </div>
+
+                <!-- CDSS Tavsiye & Önerilen Eylemler Kartı -->
+                <div class="cdss-advice-card">
+                    <h4><i data-lucide="lightbulb"></i> Klinik Karar Destek Tavsiyesi</h4>
+                    <p id="cdssAdviceText">Analiz tamamlandığında yapay zeka bulgularına göre klinik öneriler burada görüntülenecektir.</p>
+                </div>
+            </div>
+
+            <!-- SEKME 2: GROUND TRUTH KARŞILAŞTIRMASI & BLEU / ROUGE METRİKLERİ -->
+            <div class="report-tab-pane" id="groundTruthTab">
+                <div class="gt-comparison-container">
+                    
+                    <!-- Akademik NLP Metrik Kartları -->
+                    <div class="nlp-metrics-row">
+                        <div class="nlp-metric-card">
+                            <span class="nlp-title">BLEU-1 Skoru</span>
+                            <span class="nlp-value" id="valBleu1">-%</span>
+                            <span class="nlp-desc">Kelime Düzeyi Örtüşme</span>
+                        </div>
+                        <div class="nlp-metric-card">
+                            <span class="nlp-title">BLEU-4 Skoru</span>
+                            <span class="nlp-value" id="valBleu4">-%</span>
+                            <span class="nlp-desc">4'lü N-Gram Gramer</span>
+                        </div>
+                        <div class="nlp-metric-card">
+                            <span class="nlp-title">ROUGE-1 Skoru</span>
+                            <span class="nlp-value" id="valRouge1">-%</span>
+                            <span class="nlp-desc">Tıbbi Terim Yakalama</span>
+                        </div>
+                        <div class="nlp-metric-card">
+                            <span class="nlp-title">ROUGE-L Skoru</span>
+                            <span class="nlp-value" id="valRougeL">-%</span>
+                            <span class="nlp-desc">En Uzun Ortak Cümle Yapısı</span>
+                        </div>
+                    </div>
+
+                    <!-- Yan Yana Rapor Karşılaştırması -->
+                    <div class="gt-reports-split">
+                        <div class="gt-col">
+                            <div class="gt-col-header gt-true">
+                                <i data-lucide="file-check"></i>
+                                <span>Verisetindeki Gerçek Doktor Raporu (Ground Truth)</span>
+                            </div>
+                            <div class="gt-col-body" id="gtReportText">
+                                Seçilen vaka için veri setinde kayıtlı doktor raporu bekleniyor...
+                            </div>
+                        </div>
+
+                        <div class="gt-col">
+                            <div class="gt-col-header gt-pred">
+                                <i data-lucide="bot"></i>
+                                <span>Yapay Zekanın Ürettiği Rapor (VLM Tahmini)</span>
+                            </div>
+                            <div class="gt-col-body" id="gtPredText">
+                                Model çıkarımı bekleniyor...
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="academic-note-box">
+                        <i data-lucide="graduation-cap"></i>
+                        <span>Bu metrikler, bitirme tezinde modelin doktor raporları ile anlamsal ve sözcüksel benzerliğini bilimsel olarak doğrulamak için gerçek zamanlı hesaplanmaktadır.</span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SEKME 3: DOKTOR DÜZENLEME, ICD-10 & ONAY ÇALIŞMA ALANI -->
+            <div class="report-tab-pane" id="doctorEditTab">
+                <div class="doctor-workspace-card">
+                    <div class="dw-header">
+                        <div class="dw-title">
+                            <i data-lucide="user-check"></i>
+                            <span>Radyolog İnceleme ve Nihai Rapor Hazırlama</span>
+                        </div>
+                        <span class="dw-subtitle">Doktor raporu inceleyip onaylayabilir veya değiştirebilir</span>
+                    </div>
+
+                    <!-- Hızlı Klinik Şablon Butonları -->
+                    <div class="quick-templates-bar">
+                        <span class="qt-label">Hızlı İfade Ekle:</span>
+                        <button class="template-chip" data-phrase="Akciğer alanları tamamen normal ve berraktır.">Normal Bulgular</button>
+                        <button class="template-chip" data-phrase="Klinik şüphe devam ederse Toraks BT ile kontrol önerilir.">BT Kontrolü Öner</button>
+                        <button class="template-chip" data-phrase="Kateter/tüp yerleşimi optimal anatomik konumdadır.">Tüp Konumu Uygun</button>
+                        <button class="template-chip" data-phrase="Plevral efüzyon veya pnömotoraks bulgusu saptanmadı.">Efüzyon/Hava Yok</button>
+                    </div>
+
+                    <!-- Düzenlenebilir Metin Alanı -->
+                    <div class="form-group">
+                        <label for="doctorEditorText">Nihai Radyoloji Rapor Metni:</label>
+                        <textarea id="doctorEditorText" rows="9" placeholder="Rapor metnini buraya yazabilir veya VLM çıktısını düzenleyebilirsiniz..."></textarea>
+                    </div>
+
+                    <!-- Önerilen ICD-10 Tanı Kodları -->
+                    <div class="icd10-section">
+                        <label><i data-lucide="tag"></i> Önerilen ICD-10 Tanı Kodları:</label>
+                        <div class="icd10-chips-wrapper" id="icd10Chips">
+                            <span class="icd-chip">R91.8 - Akciğerde diğer nonspesifik bulgular</span>
+                        </div>
+                    </div>
+
+                    <!-- Doktor Onay ve İmza Bilgileri -->
+                    <div class="doctor-signature-grid">
+                        <div class="form-group">
+                            <label for="inputDocName">Radyolog Adı Soyadı:</label>
+                            <input type="text" id="inputDocName" value="Uzm. Dr. Şeyma (Bitirme Tezi Yürütücüsü)">
+                        </div>
+                        <div class="form-group">
+                            <label for="inputHospital">Hastane / Kurum:</label>
+                            <input type="text" id="inputHospital" value="Göğüs Hastalıkları ve Radyoloji AD">
+                        </div>
+                    </div>
+
+                    <div class="doctor-approval-check">
+                        <label class="custom-checkbox">
+                            <input type="checkbox" id="chkDoctorApproved" checked>
+                            <span class="checkmark"></span>
+                            <span class="check-text">Bu rapor, yapay zeka karar destek çıktısı doğrulanarak sorumlu hekim tarafından onaylanmıştır.</span>
+                        </label>
+                    </div>
+
+                    <!-- PDF Çıktı Butonu -->
+                    <div class="dw-actions">
+                        <button class="btn btn-primary btn-lg" id="btnPrintReport">
+                            <i data-lucide="printer"></i>
+                            <span>Resmi Tıbbi Raporu Yazdır / PDF İndir</span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ================= YAZDIRILABİLİR RESMİ RADYOLOJİ RAPORU (PRINT / PDF TEMPLATE) ================= -->
+    <div class="printable-medical-report" id="printableReportArea" aria-hidden="true">
+        <div class="print-header">
+            <div class="print-hospital-info">
+                <h2>T.C. SAĞLIK BİLİMLERİ ENSTİTÜSÜ</h2>
+                <h3>RADYOLOJİ VE GÖRÜNTÜLEME ANABİLİM DALI</h3>
+                <p>Yapay Zeka Destekli Göğüs Radyografisi İnceleme Raporu</p>
+            </div>
+            <div class="print-meta-box">
+                <div><strong>Rapor No:</strong> <span id="printReportNo">MV-2026-0841</span></div>
+                <div><strong>Tarih:</strong> <span id="printDate">13.10.2026</span></div>
+                <div><strong>Protokol:</strong> <span id="printCaseId">TEST-CASE</span></div>
+            </div>
+        </div>
+
+        <hr class="print-divider">
+
+        <div class="print-patient-info">
+            <div class="patient-info-col">
+                <div><strong>Hasta ID / Dosya:</strong> <span id="printPatientId">ANON-94819</span></div>
+                <div><strong>Tetkik Adı:</strong> Akciğer Grafisi (PA / AP)</div>
+            </div>
+            <div class="print-patient-info-col">
+                <div><strong>Yapay Zeka Modeli:</strong> YOLO11-Seg + DenseNet121-Transformer VLM</div>
+                <div><strong>Klinik Triyaj Seviyesi:</strong> <span id="printTriageLevel">Normal / Rutin</span></div>
+            </div>
+        </div>
+
+        <div class="print-images-container">
+            <div class="print-img-box">
+                <h4>Orijinal Radyografi (PA)</h4>
+                <img src="" id="printImgOrig" alt="Orijinal">
+            </div>
+            <div class="print-img-box">
+                <h4>YOLO Lezyon & Akciğer Bölütlemesi</h4>
+                <img src="" id="printImgSeg" alt="Segmentasyon">
+            </div>
+        </div>
+
+        <div class="print-report-content">
+            <h4>RADYOLOJİ RAPORU</h4>
+            <div class="print-report-text" id="printReportText">
+                <!-- Nihai Rapor Metni -->
+            </div>
+        </div>
+
+        <div class="print-metrics-summary">
+            <div><strong>Segmentasyon Güven:</strong> <span id="printSegConf">%95.2</span></div>
+            <div><strong>Akciğer/Lezyon Alanı:</strong> <span id="printAreaRatio">%28.4</span></div>
+            <div><strong>Önerilen ICD-10:</strong> <span id="printIcd10">R91.8</span></div>
+        </div>
+
+        <div class="print-footer">
+            <div class="print-disclaimer">
+                Bu rapor, yapay zeka klinik karar destek sistemi (CDSS) yardımıyla hazırlanmış olup hekim onaylıdır.
+            </div>
+            <div class="print-signature-box">
+                <div class="sig-name" id="printDoctorName">Uzm. Dr. Şeyma</div>
+                <div class="sig-title" id="printDoctorTitle">Radyoloji Uzmanı</div>
+                <div class="sig-stamp">[ ELEKTRONİK ONAY VE İMZA ]</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tez & Model Bilgi Modalı -->
+    <div class="modal-backdrop" id="infoModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i data-lucide="graduation-cap"></i> Bitirme Tezi ve Mimari Detayları</h3>
+                <button class="modal-close" id="btnCloseModal"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <h4>1. YOLO Segmentasyon Modeli (Arka Plan Temizleme)</h4>
+                <p>Eğitilen YOLOv11-seg modeli (<code>best.pt</code>), göğüs röntgenlerindeki akciğer sınırlarını ve lezyon bölgelerini yüksek doğrulukla tespit ederek kemik, yumuşak doku ve arka plan parazitlerini temizler.</p>
+                
+                <h4>2. DenseNet-121 + Transformer Görme-Dil Modeli (VLM)</h4>
+                <p>Yeni nesil VLM modeli; temizlenmiş akciğer dokusunu DenseNet-121 omurgası ile 7x7=49 mekansal bölgeye ayırarak öznitelik çıkarır. 8 başlıklı, 3 katmanlı Transformer Decoder ise görsel bölgeler ile metin arasında Çapraz Dikkat (Cross-Attention) kurarak radyoloji raporunu otoregresif olarak sentezler.</p>
+
+                <h4>3. Klinik Karar Destek Sistemi (CDSS)</h4>
+                <p>Üretilen raporlar kural tabanlı ve semantik triyaj motoru ile taranarak pnömotoraks, efüzyon, kardiyomegali gibi patolojileri tespit eder, risk seviyesi belirler ve ICD-10 tanı önerileri sunar.</p>
+
+                <h4>4. Akademik Metrikler</h4>
+                <p>Test veri setindeki gerçek doktor raporları ile AI raporları arasında anlık olarak BLEU-1, BLEU-4, ROUGE-1 ve ROUGE-L metrikleri hesaplanarak jüriye bilimsel doğrulama sunulur.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Uygulama JS -->
+    <script src="/static/app.js"></script>
+    <script>
+        // Lucide İkonlarını Başlat
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+__pycache__/
+medikal_env/
+UNET_DATASET/
+doktor_raporlari/
+YOLO_DATASET/
+runs/
+weights/
+*.pth
+*.pt
+.env
