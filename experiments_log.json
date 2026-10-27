@@ -1,0 +1,138 @@
+[
+  {
+    "id": "exp-1",
+    "trial_num": 1,
+    "title": "Deneme 1: YOLOv11-seg Bölütleme Modeli Eğitimi",
+    "phase": "Aşama 1: Doku & Lezyon İzolasyonu (ROI)",
+    "date": "Ekim 2026",
+    "architecture": "YOLOv11-seg (C3k2 Omurga, 70 Epoch, best.pt)",
+    "components": {
+      "segmentation": "YOLOv11-seg (Aktif)",
+      "encoder": "Yok (Yalnızca Bölütleme)",
+      "decoder": "Yok"
+    },
+    "metrics": {
+      "dice": "%94.6",
+      "map50": "%99.5",
+      "map50_95": "%78.7",
+      "precision": "%99.8",
+      "recall": "%99.4",
+      "f1": "%99.6",
+      "iou": "%89.8",
+      "latency": "32.4 ms (31 FPS)",
+      "top1_acc": "-",
+      "top5_acc": "-",
+      "bleu1": "-",
+      "bleu4": "-",
+      "rougeL": "-",
+      "val_loss": "0.82 (Box/Mask Loss)",
+      "perplexity": "-"
+    },
+    "status": "Tamamlandı (Seçildi)",
+    "badge_color": "#06b6d4",
+    "what_improved": "Göğüs kafesi dışındaki omuz kemikleri, sternum ve yumuşak doku parazitlerini %100 oranında temizledi. Lezyon sınırlarını %94.6 Dice ve %99.5 mAP50 ile yakaladı.",
+    "lesson_learned_next_step": "Model sadece görüntü bölütleme yapıyor; klinik radyoloji raporu üretemiyor. Bu nedenle 2. denemede bölütlenmiş görüntüyü bir Görsel Dil Modeline (VLM) bağlama kararı alındı."
+  },
+  {
+    "id": "exp-2",
+    "trial_num": 2,
+    "title": "Deneme 2: YOLO + ResNet-50 + Tek Katmanlı LSTM Decoder",
+    "phase": "Aşama 2: Temel Görsel Dil Modeli (Baseline VLM)",
+    "date": "Ekim 2026",
+    "architecture": "YOLO11-seg + ResNet-50 (Global Pooling) + LSTM (Hidden: 512, 20 Epoch)",
+    "components": {
+      "segmentation": "YOLOv11-seg",
+      "encoder": "ResNet-50 (25.6M Params)",
+      "decoder": "Tek Katmanlı LSTM"
+    },
+    "metrics": {
+      "dice": "%94.6",
+      "map50": "%99.5",
+      "map50_95": "%78.7",
+      "precision": "%99.8",
+      "recall": "%99.4",
+      "f1": "%99.6",
+      "iou": "%89.8",
+      "latency": "58 ms",
+      "top1_acc": "%58.6",
+      "top5_acc": "%81.4",
+      "bleu1": "%26.8",
+      "bleu4": "%6.8",
+      "rougeL": "%29.9",
+      "val_loss": "3.12",
+      "perplexity": "22.6"
+    },
+    "status": "Tamamlandı (Ablasyon)",
+    "badge_color": "#3b82f6",
+    "what_improved": "İlk kez röntgen görüntüsünden otomatik tıbbi rapor metni üretildi. Ham modele (V0) göre BLEU-4 %2.9'dan %6.8'e yükseldi.",
+    "lesson_learned_next_step": "ResNet-50 25.6M parametre ile ağırdır ve son katmandaki Global Average Pooling lezyonun mekansal konumunu (sağ/sol) yok edip tek bir vektöre indirger. LSTM ise 20 kelimeden sonra gradyan kaybı yaşayarak unutma yapar. 3. denemede omurganın mekansal bölgeleri koruyan DenseNet'e ve çok katmanlı LSTM'e geçirilmesi hedeflendi."
+  },
+  {
+    "id": "exp-3",
+    "trial_num": 3,
+    "title": "Deneme 3: DenseNet-121 + Çok Katmanlı Multi-LSTM Decoder",
+    "phase": "Aşama 3: Omurga Hafifletme & Katmanlı LSTM Geçiş Denemesi",
+    "date": "Ekim 2026",
+    "architecture": "YOLO11-seg + DenseNet-121 (49 Mekansal Bölge) + 2 Katmanlı Multi-LSTM",
+    "components": {
+      "segmentation": "YOLOv11-seg",
+      "encoder": "DenseNet-121 (8.0M Params)",
+      "decoder": "2 Katmanlı Multi-LSTM"
+    },
+    "metrics": {
+      "dice": "%94.6",
+      "map50": "%99.5",
+      "map50_95": "%78.7",
+      "precision": "%99.8",
+      "recall": "%99.4",
+      "f1": "%99.6",
+      "iou": "%89.8",
+      "latency": "52 ms",
+      "top1_acc": "%69.2",
+      "top5_acc": "%89.4",
+      "bleu1": "%29.4",
+      "bleu4": "%8.4",
+      "rougeL": "%31.8",
+      "val_loss": "2.82",
+      "perplexity": "16.8"
+    },
+    "status": "Tamamlandı (Ara Geçiş Modeli)",
+    "badge_color": "#a855f7",
+    "what_improved": "DenseNet-121 ile model parametreleri 25.6M'den 8.0M'e (%68.8) düşürüldü. 49 uzamsal bölge sayesinde BLEU-4 %6.8'den %8.4'e yükseldi, Loss 3.12'den 2.82'ye indi.",
+    "lesson_learned_next_step": "Çok katmanlı LSTM biraz daha iyi sonuç verse de sıralı yapısı gereği 49 bölgenin tamamıyla eş zamanlı Çapraz Dikkat kuramadı. 4. denemede LSTM tamamen terk edilerek 8-Başlıklı Multi-Head Transformer Decoder'a geçilmesine karar verildi."
+  },
+  {
+    "id": "exp-4",
+    "trial_num": 4,
+    "title": "Deneme 4: YOLOv11 + DenseNet-121 + 8-Başlıklı Transformer Decoder (Önerilen SOTA)",
+    "phase": "Aşama 4: 8-Head Cross-Attention ve Nihai SOTA Hibrit Mimari",
+    "date": "Ekim 2026",
+    "architecture": "YOLO11-seg (%94.6 Dice) + DenseNet-121 (49 Uzamsal Bölge) + 8-Head 3-Layer Transformer Decoder (20 Epoch)",
+    "components": {
+      "segmentation": "YOLOv11-seg",
+      "encoder": "DenseNet-121 (8.0M Params)",
+      "decoder": "8-Başlıklı Transformer Decoder"
+    },
+    "metrics": {
+      "dice": "%94.6",
+      "map50": "%99.5",
+      "map50_95": "%78.7",
+      "precision": "%99.8",
+      "recall": "%99.4",
+      "f1": "%99.6",
+      "iou": "%89.8",
+      "latency": "64 ms",
+      "top1_acc": "%79.3",
+      "top5_acc": "%95.2",
+      "bleu1": "%39.8",
+      "bleu4": "%14.6",
+      "rougeL": "%41.2",
+      "val_loss": "1.89",
+      "perplexity": "6.6"
+    },
+    "status": "Önerilen Final Model (SOTA)",
+    "badge_color": "#10b981",
+    "what_improved": "Tüm denemeler arasındaki en yüksek başarı: BLEU-4 %14.6 (Deneme 2'ye göre 2.1 kat, Baseline'a göre 5.0 kat artış), ROUGE-L %41.2, Validation Loss 1.89'a düştü, Perplexity 6.6'ya inerek 7 kat dil tutarlılığı sağlandı.",
+    "lesson_learned_next_step": "Akciğer sınırları ile 49 görsel bölge ve 8-başlıklı Cross-Attention kusursuz sinerji yakaladı. Bitirme tezi savunmasında nihai önerilen mimari olarak seçildi."
+  }
+]
