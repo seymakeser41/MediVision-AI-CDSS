@@ -30,7 +30,7 @@ from model_mimarisi_vlm import AkcigerRaporModeli
 # 1. AYARLAR VE DİZİNLER
 # ==========================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-YOLO_WEIGHTS_PATH = os.path.join(BASE_DIR, "runs", "segment", "Medikal_Vision", "yolo_lezyon_seg-2", "weights", "best.pt")
+YOLO_WEIGHTS_PATH = os.path.join(BASE_DIR, "best.pt")
 VLM_WEIGHTS_PATH = os.path.join(BASE_DIR, "vlm_transformer_epoch_20.pth")
 VLM_V1_WEIGHTS_PATH = os.path.join(BASE_DIR, "vlm_rapor_model_epoch_20.pth")
 SOZLUK_PATH = os.path.join(BASE_DIR, "medikal_sozluk.json")
